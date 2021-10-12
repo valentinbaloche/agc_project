@@ -112,6 +112,11 @@ def abundance_greedy_clustering(amplicon_file,
                 otu_list.append([seq, count])
     return otu_list
 
+def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
+    for kmer in cut_kmer(sequence, kmer_size):
+        kmer_dict.setdefault(kmer, [])
+        kmer_dict[kmer].append(id_seq)
+    return kmer_dict
 
 def get_unique(ids):
     return {}.fromkeys(ids).keys()
