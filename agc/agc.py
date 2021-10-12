@@ -70,15 +70,52 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    pass
+    # DOESNT PASS THE TEST
+    with gzip.open(amplicon_file, "rt") as amp_file:
+        for line in amp_file:
+            if line[0] != ">" and len(line[:-1]) >= minseqlen:
+                yield line[:-1]
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    pass
+    # DOESNT PASS THE TEST
+    seq_dict = Counter([seq[:5] for seq in read_fasta(amplicon_file, minseqlen)])
+    for seq, count in seq_dict.items():
+        if count > mincount:
+            yield [seq, count]
+
+
+def abundance_greedy_clustering(amplicon_file,
+                                minseqlen,
+                                mincount,
+                                chunk_size,
+                                kmer_size):
+    matrix = os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH"))
+    otu_list = []
+    for seq, count in dereplication_fulllength(amplicon_file,
+                                               minseqlen,
+                                               mincount):
+        # should be done with next()
+        if len(otu_list) == 0:
+            otu_list.append((seq,count))
+        else :
+            otu_status = True
+            for (otu, occ_in_list) in otu_list:
+                if get_identity(nw.global_align(seq,
+                                                otu,
+                                                gap_open=-1,
+                                                gap_extend=-1,
+                                                matrix=matrix) >= 0.97):
+                    otu_status = False
+                    break
+            if otu_status :
+                otu_list.append([seq, count])
+    return otu_list
 
 
 def get_unique(ids):
     return {}.fromkeys(ids).keys()
+
 
 
 def common(lst1, lst2): 
@@ -113,15 +150,18 @@ def get_identity(alignment_list):
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     pass
 
-def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
-
 def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
     return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
 
 def write_OTU(OTU_list, output_file):
-    pass
+    with open(output_file, 'w+') as o_file:
+        i = 1
+        for OTU in OTU_list:
+            o_file.write('>OTU_%i occurrence:%i\n%s\n' % (i,
+                                                      OTU[1],
+                                                      fill(OTU[0])))
+            i += 1
 
 #==============================================================
 # Main program
