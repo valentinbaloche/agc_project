@@ -70,17 +70,29 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    # DOESNT PASS THE TEST
-    with gzip.open(amplicon_file, "rt") as amp_file:
-        for line in amp_file:
-            if line[0] != ">" and len(line[:-1]) >= minseqlen:
-                yield line[:-1]
+    read = ""
+    for line in gzip.open(amplicon_file, "rt"):
+        if line.startswith(">"):
+            if len(read) > minseqlen:
+                yield read
+                del(read)
+                read = ""
+            else:
+                del(read)
+                read = ""
+            continue
+        read += line.rstrip("\n")
+    if len(read) > minseqlen:
+        yield read
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    # DOESNT PASS THE TEST
-    seq_dict = Counter([seq[:5] for seq in read_fasta(amplicon_file, minseqlen)])
-    for seq, count in seq_dict.items():
+    seq_dict = {}
+    for seq in read_fasta(amplicon_file, minseqlen):
+        seq_dict.setdefault(seq, 0)
+        seq_dict[seq] += 1
+
+    for seq, count in sorted(seq_dict.items()):
         if count > mincount:
             yield [seq, count]
 
@@ -117,6 +129,20 @@ def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
         kmer_dict.setdefault(kmer, [])
         kmer_dict[kmer].append(id_seq)
     return kmer_dict
+
+def search_mates(kmer_dict, sequence, kmer_size):
+
+    id_list = []
+    for kmer in cut_kmer(sequence, kmer_size):
+        for unique_kmer in kmer_dict.keys():
+            if get_identity(list(nw.global_align(kmer, 
+                                            unique_kmer,
+                                            gap_open=-1,
+                                            gap_extend=-1, 
+                                            matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH"))))) == 1:
+                id_list.append(kmer_dict[unique_kmer])
+
+    return(Counter(id_list).most_common(2))
 
 def get_unique(ids):
     return {}.fromkeys(ids).keys()
