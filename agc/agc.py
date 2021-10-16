@@ -130,19 +130,13 @@ def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
         kmer_dict[kmer].append(id_seq)
     return kmer_dict
 
-def search_mates(kmer_dict, sequence, kmer_size):
+def search_mates (kmer_dict, sequence, kmer_size):
+    common = []     
+    
+    common.append(kmer_dict[kmer] for kmer in cut_kmer(sequence, kmer_size) if kmer in kmer_dict.keys())
+    flatten_list = [seq for sublist in common for item in sublist for seq in item]
 
-    id_list = []
-    for kmer in cut_kmer(sequence, kmer_size):
-        for unique_kmer in kmer_dict.keys():
-            if get_identity(list(nw.global_align(kmer, 
-                                            unique_kmer,
-                                            gap_open=-1,
-                                            gap_extend=-1, 
-                                            matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH"))))) == 1:
-                id_list.append(kmer_dict[unique_kmer])
-
-    return(Counter(id_list).most_common(2))
+    return [seq[0] for seq in Counter(flatten_list).most_common(2)]
 
 def get_unique(ids):
     return {}.fromkeys(ids).keys()
