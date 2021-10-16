@@ -124,11 +124,13 @@ def abundance_greedy_clustering(amplicon_file,
                 otu_list.append([seq, count])
     return otu_list
 
+
 def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
     for kmer in cut_kmer(sequence, kmer_size):
         kmer_dict.setdefault(kmer, [])
         kmer_dict[kmer].append(id_seq)
     return kmer_dict
+
 
 def search_mates (kmer_dict, sequence, kmer_size):
     common = []     
@@ -138,9 +140,23 @@ def search_mates (kmer_dict, sequence, kmer_size):
 
     return [seq[0] for seq in Counter(flatten_list).most_common(2)]
 
+
+def detect_chimera(perc_identity_matrix):
+    chimera = False
+    status =0
+
+    if statistics.mean([statistics.pstdev(segment) for segment in perc_identity_matrix]) > 5:
+        for segment in perc_identity_matrix:
+            status += segment[0] > segment[1]
+    
+        if status != 0 and status != 4:
+            chimera = True
+        
+    return chimera
+
+
 def get_unique(ids):
     return {}.fromkeys(ids).keys()
-
 
 
 def common(lst1, lst2): 
