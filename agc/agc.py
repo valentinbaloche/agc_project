@@ -188,12 +188,50 @@ def get_identity(alignment_list):
             id_nu += 1
     return round(100.0 * id_nu / len(alignment_list[0]), 2)
 
+
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
+    matrix = os.path.abspath(os.path.join("MATCH"))
+    otu_list = abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size)
+    kmer_dict = {}    
+    
+    #les 2 premiers otu sont considérés comme non chimériques:
+    for sequence in otu_list:
+        for i in range (2):
+            get_unique_kmer(kmer_dict, sequence[0], otu_list.index(sequence), kmer_size)
+            
+        #pour les autres séquences on cherche dans la liste des otu des séquences similaires(grâce aux kmers) puis on compare les chunks:
+        mates = search_mates(kmer_dict, sequence[0], kmer_size)
+        
+        
+        if len(mates) > 1:
+            chunks_seq = get_chunks(sequence[0], chunk_size)
+            chunks_parent1 = get_chunks(otu_list[(mates[0])][0], chunk_size)
+            chunks_parent2 = get_chunks(otu_list[(mates[1])][0], chunk_size)
+        
+            #on crée la matrice de similarité:
+            mates_matrix = []
+            for i in range(len(chunks_seq)):
+                id_1 = get_identity(nw.global_align(chunks_seq[i], chunks_parent1[i], gap_open=-1, gap_extend=-1, matrix=matrix))
+                id_2 = get_identity(nw.global_align(chunks_seq[i], chunks_parent2[i], gap_open=-1, gap_extend=-1, matrix=matrix))
+                mates_matrix.append([id_1, id_2])
+    
+            #on regarde si la séquence est une chimère:
+            #si oui:
+            if detect_chimera(mates_matrix):
+                otu_list.remove(sequence)
+            
+            #sinon:
+            else:
+                get_unique_kmer(kmer_dict, sequence[0], otu_list.index(sequence), kmer_size)
+            
+    for otu in otu_list:
+        yield otu
+
 
 def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
     return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
+
 
 def write_OTU(OTU_list, output_file):
     with open(output_file, 'w+') as o_file:
