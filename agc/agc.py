@@ -149,7 +149,7 @@ def detect_chimera(perc_identity_matrix):
         for segment in perc_identity_matrix:
             status += segment[0] > segment[1]
     
-        if status != 0 and status != 4:
+        if status != 0 and status != len(perc_identity_matrix):
             chimera = True
         
     return chimera
