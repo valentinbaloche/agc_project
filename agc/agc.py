@@ -109,7 +109,7 @@ def abundance_greedy_clustering(amplicon_file,
                                                mincount):
         # should be done with next()
         if len(otu_list) == 0:
-            otu_list.append((seq,count))
+            otu_list.append([seq,count])
         else :
             otu_status = True
             for (otu, occ_in_list) in otu_list:
@@ -117,7 +117,7 @@ def abundance_greedy_clustering(amplicon_file,
                                                 otu,
                                                 gap_open=-1,
                                                 gap_extend=-1,
-                                                matrix=matrix) >= 0.97):
+                                                matrix=matrix)) >= 97.0:
                     otu_status = False
                     break
             if otu_status :
