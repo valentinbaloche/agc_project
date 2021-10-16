@@ -223,7 +223,8 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
             #sinon:
             else:
                 get_unique_kmer(kmer_dict, sequence[0], otu_list.index(sequence), kmer_size)
-            
+
+    # on renvoie les éléments de otu_list 1 par 1 puisque le test utilise un next()        
     for otu in otu_list:
         yield otu
 
@@ -252,7 +253,12 @@ def main():
     # Get arguments
     args = get_arguments()
     # Votre programme ici
+    
+    OTU_list = []
+    for OTU in chimera_removal(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size):
+        OTU_list.append(OTU)
 
+    write_OTU(OTU_list, args.output_file)
 
 if __name__ == '__main__':
     main()
