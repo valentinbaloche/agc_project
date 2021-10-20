@@ -23,13 +23,12 @@ from collections import Counter
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
 
-__author__ = "Your Name"
-__copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__author__ = "Valentin Baloche & Alix de Thoisy"
+__copyright__ = "Universite de Paris"
+__credits__ = ["Valentin Baloche & Alix de Thoisy"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "Valentin Baloche & Alix de Thoisy"
 __status__ = "Developpement"
 
 
@@ -55,7 +54,7 @@ def get_arguments():
     parser = argparse.ArgumentParser(description=__doc__, usage=
                                      "{0} -h"
                                      .format(sys.argv[0]))
-    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file', type=isfile, required=True, 
+    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file', type=isfile, required=True,
                         help="Amplicon is a compressed fasta file (.fasta.gz)")
     parser.add_argument('-s', '-minseqlen', dest='minseqlen', type=int, default = 400,
                         help="Minimum sequence length for dereplication (default 400)")
@@ -71,10 +70,9 @@ def get_arguments():
 
 def read_fasta(amplicon_file, minseqlen):
     """
-    prend deux arguments correspondant au fichier fasta.gz et à la longueur 
+    prend deux arguments correspondant au fichier fasta.gz et à la longueur
     minimale des séquences et retourne un générateur de séquences de longueur l
     """
-
     read = ""
     for line in gzip.open(amplicon_file, "rt"):
         if line.startswith(">"):
@@ -151,7 +149,7 @@ def abundance_greedy_clustering(amplicon_file,
 def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
     """
     met à jour un dictionnaire de kmers à partir des kmers générés par la
-    séquence, les kmers générés correspondent aux clés et la valeur associé 
+    séquence, les kmers générés correspondent aux clés et la valeur associé
     correspond à une liste d'id_seq pour pouvoir identifier dans quelles séquences
     ces kmers ont été observés.
 
@@ -166,7 +164,7 @@ def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
 
 def search_mates (kmer_dict, sequence, kmer_size):
     """
-    génère des kmers à partir d'une séquence, recherche les kmers identiques dans 
+    génère des kmers à partir d'une séquence, recherche les kmers identiques dans
     le dictionnaire de kmers et répertorie les id_seq correspondant pour ensuite
     cherche les deux id_seq qui ressortent le plus souvent et qui sont les 2 séquences
     parentes
@@ -174,10 +172,12 @@ def search_mates (kmer_dict, sequence, kmer_size):
     renvoie les id des 2 séquences parentes
 
     """
-    common = []     
+    common = []
     
-    common.append(kmer_dict[kmer] for kmer in cut_kmer(sequence, kmer_size) if kmer in kmer_dict.keys())
-    flatten_list = [seq for sublist in common for item in sublist for seq in item]
+    common.append(kmer_dict[kmer] for kmer in cut_kmer(sequence, kmer_size) \
+                                                if kmer in kmer_dict.keys())
+    flatten_list = [seq for sublist in common for item in sublist \
+                                                    for seq in item]
 
     return [seq[0] for seq in Counter(flatten_list).most_common(2)]
 
@@ -191,7 +191,8 @@ def detect_chimera(perc_identity_matrix):
     chimera = False
     status =0
 
-    if statistics.mean([statistics.pstdev(segment) for segment in perc_identity_matrix]) > 5:
+    if statistics.mean([statistics.pstdev(segment) for segment \
+                                    in perc_identity_matrix]) > 5:
         for segment in perc_identity_matrix:
             status += segment[0] > segment[1]
     
@@ -205,7 +206,6 @@ def get_unique(ids):
     """
     fonction présente de base, non utilisée
     """
-
     return {}.fromkeys(ids).keys()
 
 
@@ -213,7 +213,6 @@ def common(lst1, lst2):
     """
     fonction présente de base, non utilisée
     """
-
     return list(set(lst1) & set(lst2))
 
 
@@ -222,7 +221,6 @@ def get_chunks(sequence, chunk_size):
     prend une séquence et une longueur de segment chunk_size et retourne une liste
     de sous-séquences de longueur chunk_size non chevauchantes
     """
-
     len_seq = len(sequence)
     if len_seq < chunk_size * 4:
         raise ValueError("Sequence length ({}) is too short to be splitted in 4"
@@ -260,13 +258,20 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     directement mais le test utilise un next())
     """
     matrix = os.path.abspath(os.path.join("MATCH"))
-    otu_list = abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size)
-    kmer_dict = {}    
+    otu_list = abundance_greedy_clustering(amplicon_file,
+                                           minseqlen,
+                                           mincount,
+                                           chunk_size, 
+                                           kmer_size)
+    kmer_dict = {}
     
     #les 2 premiers otu sont considérés comme non chimériques:
     for sequence in otu_list:
         for i in range (2):
-            get_unique_kmer(kmer_dict, sequence[0], otu_list.index(sequence), kmer_size)
+            get_unique_kmer(kmer_dict,
+                            sequence[0],
+                            otu_list.index(sequence),
+                            kmer_size)
             
         #pour les autres séquences on cherche dans la liste des otu des séquences similaires(grâce aux kmers) puis on compare les chunks:
         mates = search_mates(kmer_dict, sequence[0], kmer_size)
@@ -280,8 +285,16 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
             #on crée la matrice de similarité:
             mates_matrix = []
             for i in range(len(chunks_seq)):
-                id_1 = get_identity(nw.global_align(chunks_seq[i], chunks_parent1[i], gap_open=-1, gap_extend=-1, matrix=matrix))
-                id_2 = get_identity(nw.global_align(chunks_seq[i], chunks_parent2[i], gap_open=-1, gap_extend=-1, matrix=matrix))
+                id_1 = get_identity(nw.global_align(chunks_seq[i],
+                                                    chunks_parent1[i],
+                                                    gap_open=-1,
+                                                    gap_extend=-1,
+                                                    matrix=matrix))
+                id_2 = get_identity(nw.global_align(chunks_seq[i],
+                                                    chunks_parent2[i],
+                                                    gap_open=-1,
+                                                    gap_extend=-1,
+                                                    matrix=matrix))
                 mates_matrix.append([id_1, id_2])
     
             #on regarde si la séquence est une chimère:
@@ -291,9 +304,12 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
             
             #sinon:
             else:
-                get_unique_kmer(kmer_dict, sequence[0], otu_list.index(sequence), kmer_size)
+                get_unique_kmer(kmer_dict,
+                                sequence[0],
+                                otu_list.index(sequence),
+                                kmer_size)
 
-    # on renvoie les éléments de otu_list 1 par 1 puisque le test utilise un next()        
+    # on renvoie les éléments de otu_list 1 par 1 puisque le test utilise un next()
     for otu in otu_list:
         yield otu
 
@@ -311,10 +327,10 @@ def write_OTU(OTU_list, output_file):
 
     with open(output_file, 'w+') as o_file:
         i = 1
-        for OTU in OTU_list:
+        for otu in OTU_list:
             o_file.write('>OTU_%i occurrence:%i\n%s\n' % (i,
-                                                      OTU[1],
-                                                      fill(OTU[0])))
+                                                      otu[1],
+                                                      fill(otu[0])))
             i += 1
 
 #==============================================================
@@ -333,13 +349,16 @@ def main():
     """
     # Get arguments
     args = get_arguments()
-    # Votre programme ici
     
-    OTU_list = []
-    for OTU in chimera_removal(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size):
-        OTU_list.append(OTU)
+    otu_list = []
+    for otu in chimera_removal(args.amplicon_file,
+                               args.minseqlen,
+                               args.mincount,
+                               args.chunk_size,
+                               args.kmer_size):
+        otu_list.append(otu)
 
-    write_OTU(OTU_list, args.output_file)
+    write_OTU(otu_list, args.output_file)
 
 if __name__ == '__main__':
     main()
