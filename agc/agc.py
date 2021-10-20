@@ -54,24 +54,33 @@ def get_arguments():
     parser = argparse.ArgumentParser(description=__doc__, usage=
                                      "{0} -h"
                                      .format(sys.argv[0]))
-    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file', type=isfile, required=True,
+    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file',
+                        type=isfile, required=True,
                         help="Amplicon is a compressed fasta file (.fasta.gz)")
-    parser.add_argument('-s', '-minseqlen', dest='minseqlen', type=int, default = 400,
+    parser.add_argument('-s', '-minseqlen', dest='minseqlen',
+                        type=int, default = 400,
                         help="Minimum sequence length for dereplication (default 400)")
-    parser.add_argument('-m', '-mincount', dest='mincount', type=int, default = 10,
+    parser.add_argument('-m', '-mincount', dest='mincount',
+                        type=int, default = 10,
                         help="Minimum count for dereplication  (default 10)")
-    parser.add_argument('-c', '-chunk_size', dest='chunk_size', type=int, default = 100,
+    parser.add_argument('-c', '-chunk_size', dest='chunk_size',
+                        type=int, default = 100,
                         help="Chunk size for dereplication  (default 100)")
-    parser.add_argument('-k', '-kmer_size', dest='kmer_size', type=int, default = 8,
+    parser.add_argument('-k', '-kmer_size', dest='kmer_size',
+                        type=int, default = 8,
                         help="kmer size for dereplication  (default 10)")
     parser.add_argument('-o', '-output_file', dest='output_file', type=str,
                         default="OTU.fasta", help="Output file")
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    """
-    prend deux arguments correspondant au fichier fasta.gz et à la longueur
-    minimale des séquences et retourne un générateur de séquences de longueur l
+    """Reads a fasta file and returns seq whose length < minseqlen
+    Parameters:
+        amplicon_file (str): path to fasta file
+        minseqlen (int): minimum length
+    
+    Yields:
+        str : sequence on fasta file
     """
     read = ""
     for line in gzip.open(amplicon_file, "rt"):
@@ -91,12 +100,13 @@ def read_fasta(amplicon_file, minseqlen):
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
     """
-    Prend trois arguments correspondant au fichier fasta.gz,  la longueur minimale
-    des séquences et leur comptage minimum. Elle fait appel au générateur fourni 
-    par read_fasta et retourne un générateur des séquences uniques ayant une 
-    occurrence >=mincount
+    Parameters:
+        amplicon_file (str): fasta file path
+        minseqlen (int): minimum length
+    
+    Yields:
+        (str, int): unique seq and number of occurences
     """
-
     seq_dict = {}
     for seq in read_fasta(amplicon_file, minseqlen):
         seq_dict.setdefault(seq, 0)
@@ -112,17 +122,9 @@ def abundance_greedy_clustering(amplicon_file,
                                 mincount,
                                 chunk_size,
                                 kmer_size):
+    """Returns OTU list with seq having less than 97% similiraties
+    with the ones in the list.
     """
-    utilise la fonction précédente pour générer les séquences > minseqlen et dont
-    l'occurence > mincount et les ajoutent à une liste (otu_list) si elles ont moins
-    de 97% de similarité avec les séquences déjà présentent dans la liste.
-
-    renvoie une liste d'otu
-
-    les arguments chunk_size et kmer_size sont inutiles mais doivent rester
-    pour pouvoir passer le test
-    """
-
     matrix = os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH"))
     otu_list = []
     for seq, count in dereplication_fulllength(amplicon_file,
@@ -147,15 +149,8 @@ def abundance_greedy_clustering(amplicon_file,
 
 
 def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
+    """Updates k-mer dictionaries
     """
-    met à jour un dictionnaire de kmers à partir des kmers générés par la
-    séquence, les kmers générés correspondent aux clés et la valeur associé
-    correspond à une liste d'id_seq pour pouvoir identifier dans quelles séquences
-    ces kmers ont été observés.
-
-    renvoie le dictionnaire mis à jour
-    """
-
     for kmer in cut_kmer(sequence, kmer_size):
         kmer_dict.setdefault(kmer, [])
         kmer_dict[kmer].append(id_seq)
@@ -163,14 +158,7 @@ def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
 
 
 def search_mates (kmer_dict, sequence, kmer_size):
-    """
-    génère des kmers à partir d'une séquence, recherche les kmers identiques dans
-    le dictionnaire de kmers et répertorie les id_seq correspondant pour ensuite
-    cherche les deux id_seq qui ressortent le plus souvent et qui sont les 2 séquences
-    parentes
-
-    renvoie les id des 2 séquences parentes
-
+    """Search for sequence's parents in k-mer dictionary
     """
     common = []
     
@@ -183,10 +171,7 @@ def search_mates (kmer_dict, sequence, kmer_size):
 
 
 def detect_chimera(perc_identity_matrix):
-    """
-    prend une matrice donnant par segment le taux d'identité entre la séquence
-    candidate et deux séquences parentes et retourne un booléan indiquant si la
-    séquence candidate est une chimère (True) ou ne l'est pas (False)
+    """Whether sequence is a chimera
     """
     chimera = False
     status =0
@@ -203,23 +188,19 @@ def detect_chimera(perc_identity_matrix):
 
 
 def get_unique(ids):
-    """
-    fonction présente de base, non utilisée
+    """Not used.
     """
     return {}.fromkeys(ids).keys()
 
 
 def common(lst1, lst2): 
-    """
-    fonction présente de base, non utilisée
+    """Not used.
     """
     return list(set(lst1) & set(lst2))
 
 
 def get_chunks(sequence, chunk_size):
-    """
-    prend une séquence et une longueur de segment chunk_size et retourne une liste
-    de sous-séquences de longueur chunk_size non chevauchantes
+    """Get list of non-overlapping chunks
     """
     len_seq = len(sequence)
     if len_seq < chunk_size * 4:
@@ -231,13 +212,14 @@ def get_chunks(sequence, chunk_size):
 
 
 def cut_kmer(sequence, kmer_size):
-    """Cut sequence into kmers"""
+    """Cut sequence into kmers
+    """
     for i in range(0, len(sequence) - kmer_size + 1):
         yield sequence[i:i+kmer_size]
 
 def get_identity(alignment_list):
-    """Prend une liste de séquences alignées au format ["SE-QUENCE1", "SE-QUENCE2"]
-    Retourne le pourcentage d'identite entre les deux."""
+    """Identity percentage between 2 sequences
+    """
     id_nu = 0
     for i in range(len(alignment_list[0])):
         if alignment_list[0][i] == alignment_list[1][i]:
@@ -246,26 +228,16 @@ def get_identity(alignment_list):
 
 
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    """
-    exploite toutes les fonctions développées avant pour générer les séquences,
-    ces séquences sont ajoutées dans la liste des otu si elles présentent moins de
-    97% de similarité (abundance_greedy_clustering). Puis on teste dans cette liste
-    d'otu le caractère chimérique (si oui -> elles sont retirées de la liste des otu)
-    (sinon -> elles sont conservés dans la liste des otu et utilisées pour compléter
-    le dictionnaire des kmers)
-
-    renvoie un générateur d'otu (serait plus simple de renvoyer une liste d'otu
-    directement mais le test utilise un next())
+    """Main function of the program, yields otu that are no chimera
     """
     matrix = os.path.abspath(os.path.join("MATCH"))
     otu_list = abundance_greedy_clustering(amplicon_file,
                                            minseqlen,
                                            mincount,
-                                           chunk_size, 
+                                           chunk_size,
                                            kmer_size)
     kmer_dict = {}
-    
-    #les 2 premiers otu sont considérés comme non chimériques:
+    # first 2 are considered non-chimeric by default
     for sequence in otu_list:
         for i in range (2):
             get_unique_kmer(kmer_dict,
@@ -273,7 +245,6 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
                             otu_list.index(sequence),
                             kmer_size)
             
-        #pour les autres séquences on cherche dans la liste des otu des séquences similaires(grâce aux kmers) puis on compare les chunks:
         mates = search_mates(kmer_dict, sequence[0], kmer_size)
         
         
@@ -282,7 +253,7 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
             chunks_parent1 = get_chunks(otu_list[(mates[0])][0], chunk_size)
             chunks_parent2 = get_chunks(otu_list[(mates[1])][0], chunk_size)
         
-            #on crée la matrice de similarité:
+            # similarity matrix
             mates_matrix = []
             for i in range(len(chunks_seq)):
                 id_1 = get_identity(nw.global_align(chunks_seq[i],
@@ -296,33 +267,25 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
                                                     gap_extend=-1,
                                                     matrix=matrix))
                 mates_matrix.append([id_1, id_2])
-    
-            #on regarde si la séquence est une chimère:
-            #si oui:
             if detect_chimera(mates_matrix):
                 otu_list.remove(sequence)
-            
-            #sinon:
             else:
                 get_unique_kmer(kmer_dict,
                                 sequence[0],
                                 otu_list.index(sequence),
                                 kmer_size)
-
-    # on renvoie les éléments de otu_list 1 par 1 puisque le test utilise un next()
     for otu in otu_list:
         yield otu
 
 
 def fill(text, width=80):
-    """Split text with a line return to respect fasta format"""
+    """Split text with a line return to respect fasta format
+    """
     return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
 
 
 def write_OTU(OTU_list, output_file):
-    """
-    prend une liste d'otu et le chemin vers un fichier de sortie et affiche les otu
-    au format demandé
+    """Write sequences in a fasta file
     """
 
     with open(output_file, 'w+') as o_file:
@@ -337,15 +300,7 @@ def write_OTU(OTU_list, output_file):
 # Main program
 #==============================================================
 def main():
-    """
-    Main program function
-
-    récupère les arguments
-
-    utilise la fonction chimera_removal qui utilise toutes les fonctions pour générer les
-    otu qu'on restocke dans une liste
-
-    on utilise cette liste d'otu pour écrire le fichier
+    """main fonction
     """
     # Get arguments
     args = get_arguments()
